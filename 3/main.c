@@ -11,11 +11,15 @@ struct Map {
 };
 
 Map*
-readmap(Biobuf *in)
+readmap(int fd)
 {
+	Biobuf *in;
 	char *ln;
 	Map *m;
 
+	in = Bfdopen(fd, OREAD);
+	if(in == nil)
+		sysfatal("Bfdopen: %r");
 	m = mallocz(sizeof(*m), 1);
 	if(m == nil)
 		sysfatal("malloc: %r");
@@ -30,6 +34,7 @@ readmap(Biobuf *in)
 		}
 		m->data[i] = ln;
 	}
+	Bterm(in);
 	return m;
 }
 
@@ -55,14 +60,11 @@ traverse(Map *m, int sx, int sy)
 void
 main(int argc, char *argv[])
 {
-	Biobuf *in;
+	int i, obstacles;
+	vlong r;
 	Map *m;
 
-	in = Bfdopen(0, OREAD);
-	if(in == nil)
-		sysfatal("Bfdopen: %r");
-
-	m = readmap(in);
+	m = readmap(0);
 	int slopes[][2] = {
 		/* x, y */
 		1, 1,
@@ -71,9 +73,13 @@ main(int argc, char *argv[])
 		7, 1,
 		1, 2,
 	};
-	vlong r = 1;
-	for(int i = 0; i < nelem(slopes); i++)
-		r *= traverse(m, slopes[i][0], slopes[i][1]);;
+	for(i = 0, r = 1; i < nelem(slopes); i++){
+		int x = slopes[i][0];
+		int y = slopes[i][1];
+		obstacles = traverse(m, x, y);
+		print("(%d, %d) = %d\n", x, y, obstacles);
+		r *= obstacles;
+	}
 	print("%lld\n", r);
 
 	exits(nil);
